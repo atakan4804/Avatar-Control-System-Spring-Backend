@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Avatar Steuerung</title>
+
+  <style>
+    :root{
+      --pad: 14px;
+      --gap: 10px;
+      --radius: 14px;
+      --btnH: 48px;
+      --maxW: 980px;
+      --stickyH: 220px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 0;
+      padding: calc(var(--pad) + env(safe-area-inset-top))
+      calc(var(--pad) + env(safe-area-inset-right))
+      calc(var(--pad) + env(safe-area-inset-bottom))
+      calc(var(--pad) + env(safe-area-inset-left));
+      background: #fff;
+      color: #111;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    .bad { color: #b00020; }
+
+    .container{
+      max-width: var(--maxW);
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .panel{
+      background: #f7f7f8;
+      border: 1px solid #eee;
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+
+    h1{
+      margin: 0 0 6px 0;
+      font-size: 22px;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    .info{
+      display: grid;
+      gap: 6px;
+      font-size: 14px;
+    }
+
+    code{
+      background: #efeff1;
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    .small{
+      font-size: 12px;
+      opacity: 0.8;
+      margin-top: 4px;
+      word-break: break-word;
+    }
+
+    button{
+      height: var(--btnH);
+      padding: 0 14px;
+      border-radius: 12px;
+      border: 0;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+      width: 100%;
+      max-width: 420px;
+      margin: 0;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      font-size: 15px;
+    }
+    button:active{ transform: scale(0.99); }
+    button:disabled{ opacity: 0.55; cursor: not-allowed; }
+
+    #enable { background: #111; }
+    .mouseBtn { background: #2980b9; }
+    .gyroBtn  { background: #27ae60; }
+    #walkMode { background: #2ecc71; }
+    #keyboardMode { background: #9b59b6; }
+    #gamepadMode { background: #2c3e50; }
+    #flipMode { background: #c0392b; }
+    #pauseMode { background: #e67e22; }
+    #resumeMode { background: #16a085; }
+    #resetAvatar { background: #34495e; }
+
+    .btnGrid2{
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--gap);
+      justify-items: center;
+    }
+
+    .btnGrid4{
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--gap);
+      justify-items: center;
+    }
+
+    .sectionTitle{
+      margin: 0 0 10px 0;
+      font-size: 18px;
+      text-align: center;
+    }
+
+    .split{
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .readouts{
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      font-size: 14px;
+      justify-items: center;
+    }
+    .readouts div{ width: 100%; max-width: 420px; text-align: left; }
+
+    .stickyWrap{
+      position: sticky;
+      top: calc(env(safe-area-inset-top) + var(--pad));
+      z-index: 999;
+    }
+    .stickyWrap .panel{
+      padding: 10px;
+    }
+
+    .stickyWrap h1{
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+
+    .stickyWrap .info{
+      gap: 4px;
+      font-size: 13px;
+    }
+
+    .stickyWrap .small{
+      margin-top: 2px;
+    }
+
+    .stickyWrap #enable{
+      height: 44px;
+      font-size: 14px;
+    }
+    .stickyWrap{
+      margin-bottom: -220px;
+    }
+
+    .content{
+      padding-top: var(--stickyH);
+    }
+
+    @media (min-width: 720px){
+      h1{ font-size: 26px; }
+      .split{ grid-template-columns: 1fr 1fr; }
+      .btnGrid4{ grid-template-columns: 1fr 1fr; }
+      .btnGrid2{ grid-template-columns: 1fr 1fr; }
+      .readouts{ grid-template-columns: 1fr 1fr 1fr; }
+      .readouts div{ max-width: none; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="container">
+
+  <div class="stickyWrap" id="stickyWrap">
+    <div class="panel" id="stickyPanel">
+      <h1>Avatar Steuerung</h1>
+
+      <div class="info">
+        <div>Server: <code id="server"></code></div>
+        <div>Status: <span id="status" class="bad">getrennt</span></div>
+        <div>Controller-ID: <code id="clientId"></code></div>
+        <div class="small">(Jedes Handy hat eine eigene ID – so können mehrere gleichzeitig steuern)</div>
+        <div>Aktiv: <b id="modeText">–</b></div>
+      </div>
+
+      <div class="btnGrid2" style="margin-top: 10px;">
+        <button id="enable">Bewegung aktivieren</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="content" id="content">
+
+    <div class="split">
+
+      <div class="panel">
+        <h3 class="sectionTitle">Gyro</h3>
+        <div class="btnGrid4">
+          <button id="headGyro" class="gyroBtn">Head Gyro</button>
+          <button id="bodyGyro" class="gyroBtn">Body Gyro</button>
+          <button id="leftArmGyro" class="gyroBtn">Left Arm Gyro</button>
+          <button id="rightArmGyro" class="gyroBtn">Right Arm Gyro</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3 class="sectionTitle">Mouse</h3>
+        <div class="btnGrid4">
+          <button id="headMouse" class="mouseBtn">Head Mouse</button>
+          <button id="bodyMouse" class="mouseBtn">Body Mouse</button>
+          <button id="leftArmMouse" class="mouseBtn">Left Arm Mouse</button>
+          <button id="rightArmMouse" class="mouseBtn">Right Arm Mouse</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="panel">
+      <div class="btnGrid4">
+        <button id="walkMode">Walk (Gyro)</button>
+        <button id="keyboardMode">Keyboard</button>
+        <button id="gamepadMode">Gamepad</button>
+        <button id="flipMode">Flip</button>
+        <button id="pauseMode">Pause</button>
+        <button id="resumeMode">Resume</button>
+        <button id="resetAvatar">Reset</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="readouts">
+        <div>α: <span id="alpha">–</span></div>
+        <div>β: <span id="beta">–</span></div>
+        <div>γ: <span id="gamma">–</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function updateStickyHeight() {
+    const p = document.getElementById("stickyPanel");
+    if (!p) return;
+    const h = Math.ceil(p.getBoundingClientRect().height);
+    document.documentElement.style.setProperty("--stickyH", h + "px");
+  }
+  window.addEventListener("resize", updateStickyHeight);
+  window.addEventListener("load", updateStickyHeight);
+
+  const WS_PORT = 8080;
+
+  const WS_SERVER =
+          (location.protocol === "https:" ? "wss://" : "ws://") +
+          location.hostname +
+          ":" + WS_PORT +
+          "/sensor";
+
+  document.getElementById("server").textContent = WS_SERVER;
+
+  const clientIdKey = "avatar_controller_id";
+  const CLIENT_ID = localStorage.getItem(clientIdKey) || crypto.randomUUID();
+  localStorage.setItem(clientIdKey, CLIENT_ID);
+  document.getElementById("clientId").textContent = CLIENT_ID;
+
+  let ws = null;
+  let lastSent = 0;
+  let paused = false;
+
+  let currentPart = "head";
+  let currentInput = "gyro";
+
+  const SEND_INTERVAL = 50;
+
+  let reconnectTimer = null;
+  const RECONNECT_DELAY_MS = 1000;
+
+  function setStatus(ok, text) {
+    const el = document.getElementById("status");
+    el.textContent = text || (ok ? "verbunden" : "getrennt");
+    el.className = ok ? "ok" : "bad";
+  }
+
+  function scheduleReconnect() {
+    if (reconnectTimer) return;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connectWS();
+    }, RECONNECT_DELAY_MS);
+  }
+
+  function connectWS() {
+    try {
+      if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
+
+      ws = new WebSocket(WS_SERVER);
+
+      ws.onopen = () => {
+        console.log("[WS] open");
+        setStatus(true, "verbunden");
+        sendClaim(currentPart, currentInput);
+      };
+
+      ws.onerror = (e) => {
+        console.log("[WS] error", e);
+        setStatus(false, "fehler");
+      };
+
+      ws.onclose = (e) => {
+        console.log("[WS] close", { code: e.code, reason: e.reason, wasClean: e.wasClean });
+        setStatus(false, `getrennt (${e.code})`);
+        scheduleReconnect();
+      };
+    } catch (err) {
+      console.log("[WS] exception", err);
+      setStatus(false, "fehler");
+      scheduleReconnect();
+    }
+  }
+
+  async function enableMotionIfNeeded() {
+    const DOE = window.DeviceOrientationEvent;
+    if (DOE && typeof DOE.requestPermission === "function") {
+      const p = await DOE.requestPermission();
+      if (p !== "granted") return;
+    }
+    startStreaming();
+  }
+
+  function sendJSON(obj) {
+    if (ws && ws.readyState === 1) {
+      ws.send(JSON.stringify(obj));
+    }
+  }
+
+  function sendClaim(part, input) {
+    sendJSON({ type: "claim", clientId: CLIENT_ID, part, input, ts: Date.now() });
+  }
+
+  function startStreaming() {
+    if (window.__gyroStreamingAttached) return;
+    window.__gyroStreamingAttached = true;
+
+    window.addEventListener("deviceorientation", (event) => {
+      if (paused) return;
+      if (currentInput !== "gyro") return;
+
+      const now = Date.now();
+      if (now - lastSent < SEND_INTERVAL) return;
+
+      const data = {
+        type: "sensor",
+        clientId: CLIENT_ID,
+        part: currentPart,
+        input: currentInput,
+        alpha: event.alpha ?? 0,
+        beta: event.beta ?? 0,
+        gamma: event.gamma ?? 0,
+        ts: now
+      };
+
+      sendJSON(data);
+      lastSent = now;
+
+      document.getElementById("alpha").textContent = Number(data.alpha).toFixed(1);
+      document.getElementById("beta").textContent  = Number(data.beta).toFixed(1);
+      document.getElementById("gamma").textContent = Number(data.gamma).toFixed(1);
+    }, true);
+  }
+
+  function setControl(part, input) {
+    currentPart = part;
+    currentInput = input;
+    document.getElementById("modeText").textContent = `${part}_${input}`;
+    sendClaim(part, input);
+  }
+
+  document.getElementById("headGyro").onclick      = () => setControl("head", "gyro");
+  document.getElementById("bodyGyro").onclick      = () => setControl("body", "gyro");
+  document.getElementById("leftArmGyro").onclick   = () => setControl("leftArm", "gyro");
+  document.getElementById("rightArmGyro").onclick  = () => setControl("rightArm", "gyro");
+
+  document.getElementById("headMouse").onclick     = () => setControl("head", "mouse");
+  document.getElementById("bodyMouse").onclick     = () => setControl("body", "mouse");
+  document.getElementById("leftArmMouse").onclick  = () => setControl("leftArm", "mouse");
+  document.getElementById("rightArmMouse").onclick = () => setControl("rightArm", "mouse");
+
+  function sendCommand(command) {
+    sendJSON({ type: "command", clientId: CLIENT_ID, command, ts: Date.now() });
+  }
+
+  document.getElementById("walkMode").onclick      = () => sendCommand("walk");
+  document.getElementById("keyboardMode").onclick  = () => sendCommand("keyboard");
+  document.getElementById("gamepadMode").onclick   = () => sendCommand("gamepad");
+  document.getElementById("flipMode").onclick      = () => sendCommand("flip");
+
+  document.getElementById("pauseMode").onclick = () => {
+    paused = true;
+    sendCommand("pause");
+    document.getElementById("modeText").textContent = "pause";
+  };
+
+  document.getElementById("resumeMode").onclick = () => {
+    paused = false;
+    sendCommand("resume");
+    document.getElementById("modeText").textContent = `${currentPart}_${currentInput}`;
+  };
+
+  document.getElementById("resetAvatar").onclick = () => {
+    sendCommand("reset");
+    document.getElementById("modeText").textContent = "reset";
+  };
+
+  document.getElementById("enable").onclick = async () => {
+    connectWS();
+    await enableMotionIfNeeded();
+    updateStickyHeight();
+  };
+
+  window.onload = () => {
+    connectWS();
+    updateStickyHeight();
+  };
+</script>
+</body>
+</html>
